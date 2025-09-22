@@ -1,0 +1,59 @@
+# =========================
+# General
+# =========================
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Archivos de entorno
+.env
+.env.*.local
+*.secret
+*.key
+
+# =========================
+# Python / FastAPI (Backend)
+# =========================
+
+# Entornos virtuales
+venv/
+ENV/
+.venv/
+
+# Compilados y cachés
+__pycache__/
+*.py[cod]
+*$py.class
+*.pdb
+*.egg-info/
+*.egg
+*.coverage
+.coverage.*
+.cache/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Herramientas de build
+build/
+dist/
+pip-wheel-metadata/
+.eggs/
+
+# Reportes de testing / coverage
+htmlcov/
+.coverage
+.tox/
+.nox/
+
+# =========================
+# IDEs / Entornos
+# =========================
+
+# VS Code
+.vscode/
