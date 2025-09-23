@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from config.settings import settings
 from utils.db import get_db_connection
+from controllers.auth import router as auth_router
 
 application = FastAPI()
 
@@ -17,6 +18,8 @@ def shutdown_event():
     connection = getattr(application.state, "db_connection", None)
     if connection:
         connection.close()
+
+application.include_router(auth_router)
 
 @application.get("/")
 async def root():
