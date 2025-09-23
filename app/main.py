@@ -4,6 +4,20 @@ from utils.db import get_db_connection
 
 application = FastAPI()
 
+@application.on_event("startup")
+def startup_event():
+    connection = get_db_connection()
+    if connection:
+        application.state.db_connection = connection
+    else:
+        application.state.db_connection = None
+
+@application.on_event("shutdown")
+def shutdown_event():
+    connection = getattr(application.state, "db_connection", None)
+    if connection:
+        connection.close()
+
 @application.get("/")
 async def root():
     return {"message" : "Docsflow Backend"}
@@ -16,9 +30,8 @@ def ping_db():
 
 @application.get("/db-status")
 def db_status():
-    conn = get_db_connection()
-    if conn:
-        conn.close()
+    conn = getattr(application.state, "db_connection", None)
+    if conn and conn.is_connected():
         return {"db_status": "Conexión exitosa"}
     else:
         return {"db_status": "Error de conexión"}
