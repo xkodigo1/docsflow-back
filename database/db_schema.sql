@@ -70,6 +70,6 @@ INSERT INTO departments (name) VALUES ('Finanzas'), ('Compras'), ('Talento Human
 
 -- Usuario admin inicial (cambia la contraseña luego de la creación)
 INSERT INTO users (email, password_hash, role, department_id, is_blocked) VALUES (
-    'admin@docsflow.local', '$2b$12$eImiTXuWVxfM37uY4JANjQ==', 'admin', NULL, FALSE
+    'admin@docsflow.com', '$2b$12$eImiTXuWVxfM37uY4JANjQ==', 'admin', NULL, FALSE
 );
 -- La contraseña hash es solo de ejemplo, reemplázala por un hash real generado con bcrypt.
