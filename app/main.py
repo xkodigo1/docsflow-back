@@ -22,7 +22,7 @@ def shutdown_event():
 async def root():
     return {"message" : "Docsflow Backend"}
 
-@application.get("/ping-db")
+@application.get("/ping-db")    
 def ping_db():
     return {"db_user": settings.db_user, 
             "db_host": settings.db_host,
