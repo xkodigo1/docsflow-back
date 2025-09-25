@@ -158,3 +158,42 @@ def process_document(document_id: int, current_user=Depends(get_current_user)):
     finally:
         cursor.close()
         conn.close()
+@router.get("/search")
+def search_documents(
+    q: Optional[str] = Query(None, description="Texto a buscar en el nombre del archivo"),
+    department_id: Optional[int] = Query(None, description="Filtrar por departamento"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user=Depends(get_current_user),
+):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        filters = []
+        params = []
+            #para que el operador solo pueda buscar en su departamento 
+        if current_user["role"] == "operador":
+            department_id = current_user["department_id"]
+
+        if department_id is not None:
+            filters.append("department_id = %s")
+            params.append(department_id)
+
+        if q:
+            filters.append("filename LIKE %s")
+            params.append(f"%{q}%")
+
+        query = "SELECT * FROM documents"
+        if filters:
+            query += " WHERE " + " AND ".join(filters)
+
+        query += " ORDER BY uploaded_at DESC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+
+        return {"items": rows, "limit": limit, "offset": offset, "total": len(rows)}
+    finally:
+        cursor.close()
+        conn.close()
