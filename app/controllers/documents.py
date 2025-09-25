@@ -4,6 +4,8 @@ import os
 from datetime import datetime
 from middlewares.auth import get_current_user
 from utils.db import get_db_connection
+from services.pdf_processing import extract_pdf_content
+import json
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -132,13 +134,12 @@ def process_document(document_id: int, current_user=Depends(get_current_user)):
             raise HTTPException(status_code=404, detail="Documento no encontrado")
         if current_user["role"] == "operador" and doc["department_id"] != current_user["department_id"]:
             raise HTTPException(status_code=403, detail="No autorizado para procesar este documento")
+        # Procesamiento real
+        content = extract_pdf_content(doc["filepath"])
         cursor2 = conn.cursor()
         cursor2.execute(
-            """
-            INSERT INTO extracted_tables (document_id, table_index, content)
-            VALUES (%s, %s, JSON_OBJECT('summary', 'processed', 'filename', %s))
-            """,
-            (document_id, 0, doc["filename"])
+            "INSERT INTO extracted_tables (document_id, table_index, content) VALUES (%s, %s, %s)",
+            (document_id, 0, json.dumps(content))
         )
         cursor.execute(
             "UPDATE documents SET status = 'processed', processed_at = NOW() WHERE id = %s",
