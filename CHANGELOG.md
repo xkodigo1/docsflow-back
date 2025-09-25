@@ -41,4 +41,33 @@ Levantar el servidor con conexión a base de datos MySQL, configuración de JWT 
 - Conexión persistente a MySQL validada en `/db-status`.  
 - Seguridad JWT configurada (login, refresh, registro).  
 - Control de roles (`admin`, `operador`) funcionando en endpoints protegidos.  
-- CRUD básico de usuarios operativo.  
+- CRUD básico de usuarios operativo. 
+
+---
+
+## 🚀 v0.2.0 – Documents MVP  
+**Fecha:** 2025-09-25  
+
+### 🎯 Objetivo
+Implementar el módulo de gestión de documentos (MVP), permitiendo a los usuarios subir, listar, consultar, procesar y eliminar PDFs con control de acceso por rol y departamento.  
+
+---
+
+### 📦 Cambios incluidos
+- :sparkles: **documents-routes** – endpoints principales:  
+  - `POST /documents/upload` → valida PDF, guarda en `uploads/` por departamento, inserta metadata (`status=pending`).  
+  - `GET /documents/` → listado con paginación y filtros; operadores ven solo documentos de su departamento.  
+  - `GET /documents/{id}` → detalle con control de acceso por rol/departamento.  
+  - `DELETE /documents/{id}` → borra archivo físico y registro en DB con control de acceso.  
+  - `POST /documents/{id}/process` → simula extracción, inserta datos en `extracted_tables`, marca documento como `processed`.  
+
+- :gear: **main.py** – integración del router de documentos (`include_router(documents_router)`).  
+
+---
+
+### ✅ Estado actual
+- Los usuarios pueden subir PDFs y gestionarlos desde la API.  
+- Los operadores están restringidos a ver solo los documentos de su propio departamento.  
+- Simulación de procesamiento implementada (persistencia en `extracted_tables`).  
+- Documentos con estados básicos: `pending` y `processed`.  
+
