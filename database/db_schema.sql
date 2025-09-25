@@ -69,8 +69,7 @@ CREATE INDEX idx_users_department_id ON users(department_id);
 INSERT INTO departments (name) VALUES ('Finanzas'), ('Compras'), ('Talento Humano');
 
 -- Usuario admin inicial (cambia la contraseña luego de la creación)
--- Contraseña: admin123
 INSERT INTO users (email, password_hash, role, department_id, is_blocked) VALUES (
     'admin@docsflow.com', '$2b$12$eImiTXuWVxfM37uY4JANjQ==', 'admin', NULL, FALSE
 );
-
+-- La contraseña hash es solo de ejemplo, reemplázala por un hash real generado con bcrypt.
