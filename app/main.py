@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from config.settings import settings
 from utils.db import get_db_connection
 from controllers.auth import router as auth_router
+from controllers.documents import router as docs_router
 
 application = FastAPI()
 
@@ -20,21 +21,4 @@ def shutdown_event():
         connection.close()
 
 application.include_router(auth_router)
-
-@application.get("/")
-async def root():
-    return {"message" : "Docsflow Backend"}
-
-@application.get("/ping-db")    
-def ping_db():
-    return {"db_user": settings.db_user, 
-            "db_host": settings.db_host,
-            "db_name": settings.db_name}
-
-@application.get("/db-status")
-def db_status():
-    conn = getattr(application.state, "db_connection", None)
-    if conn and conn.is_connected():
-        return {"db_status": "Conexión exitosa"}
-    else:
-        return {"db_status": "Error de conexión"}
+application.include_router(docs_router)
