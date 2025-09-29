@@ -1,23 +1,40 @@
 from fastapi import HTTPException
 from repositories import user_repo
 from utils.security import verify_password, create_access_token
+from datetime import timedelta
+
+MAX_ATTEMPTS = 5
+
 
 def login_user(email: str, password: str):
     user = user_repo.get_user_by_email(email)
 
     if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        # No revelar existencia
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
-    if user["is_blocked"] and user["role"] == "operador":
+    # Bloqueo previo si corresponde
+    if user["role"] == "operador" and user.get("is_blocked"):
         raise HTTPException(status_code=403, detail="Usuario bloqueado, contacte al admin")
 
+    # Validar password
     if not verify_password(password, user["password_hash"]):
-        attempts = user["failed_attempts"] + 1
-        blocked = attempts >= 5 and user["role"] == "operador"
-        user_repo.update_failed_attempts(user["id"], attempts, blocked)
-        msg = "Usuario bloqueado" if blocked else "Credenciales inválidas"
+        attempts = (user.get("failed_attempts") or 0) + 1
+        will_block = user["role"] == "operador" and attempts >= MAX_ATTEMPTS
+        user_repo.update_failed_attempts(user["id"], attempts, will_block)
+        msg = "Usuario bloqueado" if will_block else "Credenciales inválidas"
         raise HTTPException(status_code=401, detail=msg)
 
-    user_repo.reset_attempts(user["id"])
-    token = create_access_token(user["id"])
+    # Login exitoso: resetear intentos para operadores
+    if user["role"] == "operador":
+        user_repo.reset_failed_attempts(user["id"])
+
+    # Emitir token con claims útiles
+    payload = {
+        "sub": str(user["id"]),
+        "role": user["role"],
+        "department_id": user["department_id"],
+    }
+    # 30 min por defecto; ajusta si tu helper lo maneja distinto
+    token = create_access_token(payload=payload, expires_delta=timedelta(minutes=30))
     return {"access_token": token, "token_type": "bearer"}
