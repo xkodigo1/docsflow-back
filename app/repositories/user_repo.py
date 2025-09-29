@@ -53,3 +53,28 @@ def reset_failed_attempts(user_id: int):
     finally:
         cursor.close()
         conn.close()
+
+
+def list_users(limit: int, offset: int, role: str | None = None, department_id: int | None = None):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        filters = []
+        params = []
+        if role:
+            filters.append("role = %s")
+            params.append(role)
+        if department_id is not None:
+            filters.append("department_id = %s")
+            params.append(department_id)
+        query = "SELECT id, email, role, department_id, is_blocked, failed_attempts, created_at, updated_at FROM users"
+        if filters:
+            query += " WHERE " + " AND ".join(filters)
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        return rows
+    finally:
+        cursor.close()
+        conn.close()
