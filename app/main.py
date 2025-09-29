@@ -4,6 +4,7 @@ from utils.db import get_db_connection
 from controllers.auth import router as auth_router
 from controllers.documents import router as docs_router
 from controllers.tables import router as tables_router
+from controllers.users import router as users_router
 
 application = FastAPI()
 
@@ -24,3 +25,4 @@ def shutdown_event():
 application.include_router(auth_router)
 application.include_router(docs_router)
 application.include_router(tables_router)
+application.include_router(users_router)
