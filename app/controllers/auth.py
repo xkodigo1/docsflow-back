@@ -8,6 +8,9 @@ from schemas.user import UserCreate, UserOut
 from jose import JWTError, jwt
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from services.auth_service import login_user
+from utils.security import get_password_hash
+from utils.db import get_db_connection
+from utils.authz import require_admin
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -21,24 +24,15 @@ class RefreshTokenRequest(BaseModel):
 
 security = HTTPBearer()
 
-def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        payload = jwt.decode(credentials.credentials, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
-        if payload.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Solo el admin puede registrar usuarios")
-        return payload
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token inválido")
-
 @router.post("/login", response_model=TokenResponse)
+
 def login(user: UserLogin, request: Request):
     result = login_user(user.email, user.password)
-    # La expiración está manejada por create_access_token; exponemos segundos estándar
     return TokenResponse(access_token=result["access_token"], expires_in=settings.jwt_expirations_minutes * 60)
 
 @router.post("/refresh", response_model=TokenResponse)
+
 def refresh_token(data: RefreshTokenRequest):
-    from utils.db import get_db_connection
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM password_reset_tokens WHERE token = %s AND used = FALSE AND expires_at > NOW()", (data.refresh_token,))
@@ -68,10 +62,9 @@ def refresh_token(data: RefreshTokenRequest):
     return TokenResponse(access_token=access_token, expires_in=settings.jwt_expirations_minutes * 60)
 
 @router.post("/register", response_model=UserOut)
-def register(user: UserCreate, admin=Depends(get_current_admin)):
-    import bcrypt
-    from utils.db import get_db_connection
-    password_hash = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
+
+def register(user: UserCreate, admin=Depends(require_admin)):
+    password_hash = get_password_hash(user.password)
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
