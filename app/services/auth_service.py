@@ -25,7 +25,7 @@ def login_user(email: str, password: str):
         msg = "Usuario bloqueado" if will_block else "Credenciales inválidas"
         raise HTTPException(status_code=401, detail=msg)
 
-    # Login exitoso: resetear intentos para operadores
+    # Login exitoso: resetea intentos para operadores
     if user["role"] == "operador":
         user_repo.reset_failed_attempts(user["id"])
 
@@ -35,6 +35,5 @@ def login_user(email: str, password: str):
         "role": user["role"],
         "department_id": user["department_id"],
     }
-    # 30 min por defecto; ajusta si tu helper lo maneja distinto
-    token = create_access_token(payload=payload, expires_delta=timedelta(minutes=30))
+    token = create_access_token(data=payload, expires_delta=timedelta(minutes=30))
     return {"access_token": token, "token_type": "bearer"}
