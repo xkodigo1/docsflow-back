@@ -1,5 +1,5 @@
 -- Crear la base de datos
-CREATE DATABASE IF NOT EXISTS docsflow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS docsflow;
 USE docsflow;
 
 -- Tabla de departamentos
@@ -32,8 +32,11 @@ CREATE TABLE documents (
     department_id INT NOT NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     filepath VARCHAR(512) NOT NULL,
-    status ENUM('pending', 'processed', 'error') NOT NULL DEFAULT 'pending',
+    document_type VARCHAR(100) NULL,
+    status ENUM('pending', 'processing', 'processed', 'error') NOT NULL DEFAULT 'pending',
     processed_at TIMESTAMP NULL DEFAULT NULL,
+    error_message VARCHAR(512) NULL DEFAULT NULL,
+    last_attempt_at TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (department_id) REFERENCES departments(id)
 );
@@ -62,14 +65,15 @@ CREATE TABLE password_reset_tokens (
 -- Índices útiles
 CREATE INDEX idx_documents_uploaded_by ON documents(uploaded_by);
 CREATE INDEX idx_documents_department_id ON documents(department_id);
+CREATE INDEX idx_documents_type ON documents(document_type);
 CREATE INDEX idx_extracted_tables_document_id ON extracted_tables(document_id);
 CREATE INDEX idx_users_department_id ON users(department_id);
 
 -- Valores iniciales de departamentos
 INSERT INTO departments (name) VALUES ('Finanzas'), ('Compras'), ('Talento Humano');
 
--- Usuario admin inicial (cambia la contraseña luego de la creación)
+-- Usuario admin inicial
 INSERT INTO users (email, password_hash, role, department_id, is_blocked) VALUES (
-    'admin@docsflow.com', '$2b$12$eImiTXuWVxfM37uY4JANjQ==', 'admin', NULL, FALSE
+    'admin@docsflow.com', '$2a$12$S/pW4HmWw3KexqfC.oXh7esPqPth5cJQs6blwi9586PXM1384YN4K', 'admin', NULL, FALSE
 );
--- La contraseña hash es solo de ejemplo, reemplázala por un hash real generado con bcrypt.
+
