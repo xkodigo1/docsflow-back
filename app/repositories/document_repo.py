@@ -3,16 +3,16 @@ from utils.db import get_db_connection
 from utils.query import build_where
 
 
-def insert_document(filename: str, uploaded_by: int, department_id: int, filepath: str) -> int:
+def insert_document(filename: str, uploaded_by: int, department_id: int, filepath: str, document_type: Optional[str] = None) -> int:
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(
             """
-            INSERT INTO documents (filename, uploaded_by, department_id, filepath, status)
-            VALUES (%s, %s, %s, %s, 'pending')
+            INSERT INTO documents (filename, uploaded_by, department_id, filepath, document_type, status)
+            VALUES (%s, %s, %s, %s, %s, 'pending')
             """,
-            (filename, uploaded_by, department_id, filepath)
+            (filename, uploaded_by, department_id, filepath, document_type)
         )
         conn.commit()
         return cursor.lastrowid
@@ -32,7 +32,7 @@ def get_document(document_id: int):
         conn.close()
 
 
-def list_documents(limit: int, offset: int, department_id: Optional[int] = None):
+def list_documents(limit: int, offset: int, department_id: Optional[int] = None, document_type: Optional[str] = None):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -41,6 +41,9 @@ def list_documents(limit: int, offset: int, department_id: Optional[int] = None)
         if department_id is not None:
             filters.append("department_id = %s")
             params.append(department_id)
+        if document_type:
+            filters.append("document_type = %s")
+            params.append(document_type)
         query = "SELECT * FROM documents" + build_where(filters) + " ORDER BY uploaded_at DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         cursor.execute(query, tuple(params))
@@ -50,7 +53,7 @@ def list_documents(limit: int, offset: int, department_id: Optional[int] = None)
         conn.close()
 
 
-def search_documents(q: Optional[str], department_id: Optional[int], limit: int, offset: int):
+def search_documents(q: Optional[str], department_id: Optional[int], limit: int, offset: int, document_type: Optional[str] = None):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -59,6 +62,9 @@ def search_documents(q: Optional[str], department_id: Optional[int], limit: int,
         if department_id is not None:
             filters.append("department_id = %s")
             params.append(department_id)
+        if document_type:
+            filters.append("document_type = %s")
+            params.append(document_type)
         if q:
             filters.append("filename LIKE %s")
             params.append(f"%{q}%")
