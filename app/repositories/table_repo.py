@@ -14,6 +14,7 @@ def insert_extracted_table(document_id: int, table_index: int, content_json: str
         return cursor.lastrowid
     finally:
         cursor.close()
+        conn.close()
 
 
 def list_by_document(document_id: int):
@@ -44,14 +45,26 @@ def search(q: str, department_id: Optional[int] = None, limit: int = 20, offset:
         if department_id is not None:
             filters.append("d.department_id = %s")
             params.append(department_id)
+        # Búsqueda parcial (case-insensitive según collation de la columna)
         filters.append("JSON_SEARCH(JSON_EXTRACT(et.content, '$'), 'one', %s) IS NOT NULL")
-        params.append(q)
+        params.append(f"%{q}%")
         if filters:
             query += " WHERE " + " AND ".join(filters)
         query += " ORDER BY et.id DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         cursor.execute(query, tuple(params))
         return cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def delete_by_document(document_id: int) -> None:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM extracted_tables WHERE document_id = %s", (document_id,))
+        conn.commit()
     finally:
         cursor.close()
         conn.close()

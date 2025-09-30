@@ -33,7 +33,7 @@ class ResetPasswordRequest(BaseModel):
 
 security = HTTPBearer()
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, summary="Iniciar sesión", description="Autenticación con email y contraseña. Devuelve un JWT (30 min). Bloquea operador a 5 intentos fallidos.")
 
 def login(user: UserLogin, request: Request):
     result = login_user(user.email, user.password)
@@ -74,6 +74,10 @@ def refresh_token(data: RefreshTokenRequest):
 
 def register(user: UserCreate, admin=Depends(require_admin)):
     password_hash = get_password_hash(user.password)
+    # Normalizar role por defecto
+    role = (user.role or "operador").lower()
+    if role not in ("admin", "operador"):
+        role = "operador"
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -82,7 +86,7 @@ def register(user: UserCreate, admin=Depends(require_admin)):
             INSERT INTO users (email, password_hash, role, department_id, is_blocked, failed_attempts)
             VALUES (%s, %s, %s, %s, FALSE, 0)
             """,
-            (user.email, password_hash, user.role, user.department_id)
+            (user.email, password_hash, role, user.department_id)
         )
         conn.commit()
         user_id = cursor.lastrowid
@@ -107,7 +111,7 @@ def register(user: UserCreate, admin=Depends(require_admin)):
         cursor.close()
         conn.close()
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", summary="Solicitar recuperación de contraseña", description="Genera un token temporal (15 min) y envía un enlace al correo si el email existe.")
 
 def forgot_password(data: ForgotPasswordRequest):
     from repositories.user_repo import get_user_by_email
@@ -129,7 +133,7 @@ def forgot_password(data: ForgotPasswordRequest):
     send_email(to_email=user["email"], subject=subject, html_body=html)
     return {"message": "Si el email existe, se envió un token"}
 
-@router.post("/reset-password")
+@router.post("/reset-password", summary="Restablecer contraseña", description="Valida el token y actualiza la contraseña del usuario.")
 
 def reset_password(data: ResetPasswordRequest):
     valid = get_valid_token(data.token)

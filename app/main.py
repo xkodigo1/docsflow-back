@@ -2,11 +2,21 @@ from fastapi import FastAPI
 from config.settings import settings
 from utils.db import get_db_connection
 from controllers.auth import router as auth_router
-from controllers.documents import router as docs_router
+from controllers.documents import router as documents_router
 from controllers.tables import router as tables_router
 from controllers.users import router as users_router
+from fastapi.middleware.cors import CORSMiddleware
 
 application = FastAPI()
+
+# CORS
+application.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @application.on_event("startup")
 def startup_event():
@@ -23,6 +33,6 @@ def shutdown_event():
         connection.close()
 
 application.include_router(auth_router)
-application.include_router(docs_router)
 application.include_router(tables_router)
 application.include_router(users_router)
+application.include_router(documents_router)

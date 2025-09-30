@@ -4,7 +4,7 @@ from datetime import datetime
 
 class UserBase(BaseModel):
     email: EmailStr
-    role: str = Field(..., pattern="^(admin|operador)$")
+    role: str = Field("operador", pattern="^(admin|operador)$")
     department_id: Optional[int] = None
 
 class UserCreate(UserBase):
@@ -13,6 +13,14 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"email": "admin@docsflow.com", "password": "admin123"}
+            ]
+        }
+    }
 
 class UserOut(UserBase):
     id: int
