@@ -11,6 +11,8 @@ from services.auth_service import login_user
 from utils.security import get_password_hash
 from utils.db import get_db_connection
 from utils.authz import require_admin
+from repositories.password_reset_repo import create_token, get_valid_token, mark_used
+from utils.email import send_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -21,6 +23,13 @@ class TokenResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 security = HTTPBearer()
 
@@ -94,6 +103,49 @@ def register(user: UserCreate, admin=Depends(require_admin)):
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=f"Error al registrar usuario: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
+
+@router.post("/forgot-password")
+
+def forgot_password(data: ForgotPasswordRequest):
+    from repositories.user_repo import get_user_by_email
+    user = get_user_by_email(data.email)
+    # Responder siempre 200
+    if not user:
+        return {"message": "Si el email existe, se envió un token"}
+    token = create_token(user_id=user["id"], exp_minutes=15)
+    base = settings.frontend_base_url or "https://your-frontend"
+    reset_link = f"{base}/reset-password?token={token}"
+    subject = "Recuperación de contraseña - DocsFlow"
+    html = f"""
+    <p>Hola,</p>
+    <p>Recibimos una solicitud para restablecer tu contraseña. Usa el siguiente enlace (válido por 15 minutos):</p>
+    <p><a href='{reset_link}'>Restablecer contraseña</a></p>
+    <p>Si no solicitaste este cambio, ignora este mensaje.</p>
+    """
+    # Envío con manejo de errores explícito
+    send_email(to_email=user["email"], subject=subject, html_body=html)
+    return {"message": "Si el email existe, se envió un token"}
+
+@router.post("/reset-password")
+
+def reset_password(data: ResetPasswordRequest):
+    valid = get_valid_token(data.token)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Token inválido o expirado")
+    from repositories.user_repo import get_user_by_email
+    from utils.db import get_db_connection
+    from utils.security import get_password_hash
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        password_hash = get_password_hash(data.new_password)
+        cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, valid["user_id"]))
+        mark_used(valid["id"]) 
+        conn.commit()
+        return {"message": "Contraseña actualizada"}
     finally:
         cursor.close()
         conn.close()
