@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # Frontend
     frontend_base_url: str | None = None
 
+    # CORS
+    cors_allowed_origins: list[str] = ["http://localhost:5174"]
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
