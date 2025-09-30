@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     # Uploads
     upload_directory: str = "./uploads"
 
+    # SMTP/Email
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_password: str
+    smtp_use_tls: bool = False
+    sender_email: str
+    email_debug: bool = True
+
+    # Frontend
+    frontend_base_url: str | None = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
