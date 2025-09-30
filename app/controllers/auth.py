@@ -2,15 +2,17 @@ from fastapi import APIRouter, HTTPException, status, Request, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from schemas.user import UserLogin
-from utils.db import get_db_connection
 from config.settings import settings
-import bcrypt
-from jose import jwt
 from datetime import datetime, timedelta
-from fastapi import Depends
 from schemas.user import UserCreate, UserOut
 from jose import JWTError, jwt
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from services.auth_service import login_user
+from utils.security import get_password_hash
+from utils.db import get_db_connection
+from utils.authz import require_admin
+from repositories.password_reset_repo import create_token, get_valid_token, mark_used
+from utils.email import send_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -22,43 +24,23 @@ class TokenResponse(BaseModel):
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
 security = HTTPBearer()
 
-def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        payload = jwt.decode(credentials.credentials, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
-        if payload.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Solo el admin puede registrar usuarios")
-        return payload
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token inválido")
-
 @router.post("/login", response_model=TokenResponse)
+
 def login(user: UserLogin, request: Request):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users WHERE email = %s", (user.email,))
-    db_user = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    if not db_user:
-        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    if db_user["is_blocked"]:
-        raise HTTPException(status_code=403, detail="Usuario bloqueado")
-    if not bcrypt.checkpw(user.password.encode(), db_user["password_hash"].encode()):
-        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    # Generar JWT
-    expire = datetime.utcnow() + timedelta(minutes=settings.jwt_expirations_minutes)
-    payload = {
-        "sub": str(db_user["id"]),
-        "role": db_user["role"],
-        "exp": expire,
-        "department_id": db_user["department_id"]
-    }
-    token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-    return TokenResponse(access_token=token, expires_in=settings.jwt_expirations_minutes * 30)
+    result = login_user(user.email, user.password)
+    return TokenResponse(access_token=result["access_token"], expires_in=settings.jwt_expirations_minutes * 60)
 
 @router.post("/refresh", response_model=TokenResponse)
+
 def refresh_token(data: RefreshTokenRequest):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -68,19 +50,16 @@ def refresh_token(data: RefreshTokenRequest):
         cursor.close()
         conn.close()
         raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
-    # Obtener usuario
     cursor.execute("SELECT * FROM users WHERE id = %s", (db_token["user_id"],))
     db_user = cursor.fetchone()
     if not db_user or db_user["is_blocked"]:
         cursor.close()
         conn.close()
         raise HTTPException(status_code=403, detail="Usuario bloqueado o no encontrado")
-    # Marcar refresh token como usado (opcional, para un solo uso)
     cursor.execute("UPDATE password_reset_tokens SET used = TRUE WHERE id = %s", (db_token["id"],))
     conn.commit()
     cursor.close()
     conn.close()
-    # Generar nuevo access token
     expire = datetime.utcnow() + timedelta(minutes=settings.jwt_expirations_minutes)
     payload = {
         "sub": str(db_user["id"]),
@@ -92,10 +71,9 @@ def refresh_token(data: RefreshTokenRequest):
     return TokenResponse(access_token=access_token, expires_in=settings.jwt_expirations_minutes * 60)
 
 @router.post("/register", response_model=UserOut)
-def register(user: UserCreate, admin=Depends(get_current_admin)):
-    # Hashear la contraseña
-    import bcrypt
-    password_hash = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
+
+def register(user: UserCreate, admin=Depends(require_admin)):
+    password_hash = get_password_hash(user.password)
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -125,6 +103,49 @@ def register(user: UserCreate, admin=Depends(get_current_admin)):
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=400, detail=f"Error al registrar usuario: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
+
+@router.post("/forgot-password")
+
+def forgot_password(data: ForgotPasswordRequest):
+    from repositories.user_repo import get_user_by_email
+    user = get_user_by_email(data.email)
+    # Responder siempre 200
+    if not user:
+        return {"message": "Si el email existe, se envió un token"}
+    token = create_token(user_id=user["id"], exp_minutes=15)
+    base = settings.frontend_base_url or "https://your-frontend"
+    reset_link = f"{base}/reset-password?token={token}"
+    subject = "Recuperación de contraseña - DocsFlow"
+    html = f"""
+    <p>Hola,</p>
+    <p>Recibimos una solicitud para restablecer tu contraseña. Usa el siguiente enlace (válido por 15 minutos):</p>
+    <p><a href='{reset_link}'>Restablecer contraseña</a></p>
+    <p>Si no solicitaste este cambio, ignora este mensaje.</p>
+    """
+    # Envío con manejo de errores explícito
+    send_email(to_email=user["email"], subject=subject, html_body=html)
+    return {"message": "Si el email existe, se envió un token"}
+
+@router.post("/reset-password")
+
+def reset_password(data: ResetPasswordRequest):
+    valid = get_valid_token(data.token)
+    if not valid:
+        raise HTTPException(status_code=400, detail="Token inválido o expirado")
+    from repositories.user_repo import get_user_by_email
+    from utils.db import get_db_connection
+    from utils.security import get_password_hash
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        password_hash = get_password_hash(data.new_password)
+        cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, valid["user_id"]))
+        mark_used(valid["id"]) 
+        conn.commit()
+        return {"message": "Contraseña actualizada"}
     finally:
         cursor.close()
         conn.close()
