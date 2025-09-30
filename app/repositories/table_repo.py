@@ -14,6 +14,7 @@ def insert_extracted_table(document_id: int, table_index: int, content_json: str
         return cursor.lastrowid
     finally:
         cursor.close()
+        conn.close()
 
 
 def list_by_document(document_id: int):
