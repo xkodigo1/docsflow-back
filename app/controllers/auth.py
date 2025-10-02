@@ -1,18 +1,18 @@
 from fastapi import APIRouter, HTTPException, status, Request, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from schemas.user import UserLogin
-from config.settings import settings
+from app.schemas.user import UserLogin
+from app.config.settings import settings
 from datetime import datetime, timedelta
-from schemas.user import UserCreate, UserOut
+from app.schemas.user import UserCreate, UserOut
 from jose import JWTError, jwt
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from services.auth_service import login_user
-from utils.security import get_password_hash
-from utils.db import get_db_connection
-from utils.authz import require_admin
-from repositories.password_reset_repo import create_token, get_valid_token, mark_used
-from utils.email import send_email
+from app.services.auth_service import login_user
+from app.utils.security import get_password_hash
+from app.utils.db import get_db_connection
+from app.utils.authz import require_admin
+from app.repositories.password_reset_repo import create_token, get_valid_token, mark_used
+from app.utils.email import send_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -114,7 +114,7 @@ def register(user: UserCreate, admin=Depends(require_admin)):
 @router.post("/forgot-password", summary="Solicitar recuperación de contraseña", description="Genera un token temporal (15 min) y envía un enlace al correo si el email existe.")
 
 def forgot_password(data: ForgotPasswordRequest):
-    from repositories.user_repo import get_user_by_email
+    from app.repositories.user_repo import get_user_by_email
     user = get_user_by_email(data.email)
     # Responder siempre 200
     if not user:
@@ -139,9 +139,9 @@ def reset_password(data: ResetPasswordRequest):
     valid = get_valid_token(data.token)
     if not valid:
         raise HTTPException(status_code=400, detail="Token inválido o expirado")
-    from repositories.user_repo import get_user_by_email
-    from utils.db import get_db_connection
-    from utils.security import get_password_hash
+    from app.repositories.user_repo import get_user_by_email
+    from app.utils.db import get_db_connection
+    from app.utils.security import get_password_hash
     conn = get_db_connection()
     cursor = conn.cursor()
     try:

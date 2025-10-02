@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import secrets
-from utils.db import get_db_connection
+from app.utils.db import get_db_connection
 
 DEFAULT_EXP_MINUTES = 15
 

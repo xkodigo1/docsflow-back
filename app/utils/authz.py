@@ -1,5 +1,5 @@
 from fastapi import HTTPException, Depends
-from middlewares.auth import get_current_user
+from app.middlewares.auth import get_current_user
 
 
 def ensure_operator_can_access_document(operator_department_id: int, document_department_id: int) -> None:

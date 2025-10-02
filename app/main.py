@@ -1,10 +1,17 @@
 from fastapi import FastAPI
-from config.settings import settings
-from utils.db import get_db_connection
-from controllers.auth import router as auth_router
-from controllers.documents import router as documents_router
-from controllers.tables import router as tables_router
-from controllers.users import router as users_router
+from app.config.settings import settings
+from app.utils.db import get_db_connection
+from app.controllers.auth import router as auth_router
+from app.controllers.documents import router as documents_router
+# Importar test_router si existe
+try:
+    from app.controllers.documents import test_router
+    HAS_TEST_ROUTER = True
+except ImportError:
+    HAS_TEST_ROUTER = False
+    test_router = None
+from app.controllers.tables import router as tables_router
+from app.controllers.users import router as users_router
 from fastapi.middleware.cors import CORSMiddleware
 
 application = FastAPI()
@@ -36,3 +43,6 @@ application.include_router(auth_router)
 application.include_router(tables_router)
 application.include_router(users_router)
 application.include_router(documents_router)
+# Router de test sin autenticación (necesario para funcionalidad)
+if HAS_TEST_ROUTER and test_router:
+    application.include_router(test_router)

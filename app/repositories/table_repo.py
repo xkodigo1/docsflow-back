@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Any
-from utils.db import get_db_connection
+from app.utils.db import get_db_connection
 
 
 def insert_extracted_table(document_id: int, table_index: int, content_json: str) -> int:

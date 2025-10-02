@@ -2,12 +2,12 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query, 
 from typing import Optional
 import os
 from datetime import datetime
-from middlewares.auth import get_current_user
-from repositories import document_repo, table_repo, department_repo
+from app.middlewares.auth import get_current_user
+from app.repositories import document_repo, table_repo, department_repo
 import json
-from utils.db import get_db_connection
-from utils.files import build_upload_path, write_bytes
-from utils.authz import ensure_user_can_access_document
+from app.utils.db import get_db_connection
+from app.utils.files import build_upload_path, write_bytes
+from app.utils.authz import ensure_user_can_access_document
 from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -89,8 +89,8 @@ def delete_document(document_id: int, current_user=Depends(get_current_user)):
 @router.post("/{document_id}/process")
 
 def process_document(document_id: int, current_user=Depends(get_current_user)):
-    from services.pdf_processing import extract_pdf_content
-    from utils.db import get_db_connection
+    from app.services.pdf_processing import extract_pdf_content
+    from app.utils.db import get_db_connection
     doc = document_repo.get_document(document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
@@ -130,7 +130,7 @@ def reprocess_document(document_id: int, current_user=Depends(get_current_user))
     ensure_user_can_access_document(current_user, doc)
     # Limpiar tablas extraídas y marcar pending
     table_repo.delete_by_document(document_id)
-    from utils.db import get_db_connection
+    from app.utils.db import get_db_connection
     conn = get_db_connection()
     cur = conn.cursor()
     try:
@@ -182,3 +182,5 @@ def get_document_status(document_id: int, current_user=Depends(get_current_user)
         "last_attempt_at": doc.get("last_attempt_at"),
         "error_message": doc.get("error_message"),
     }
+
+

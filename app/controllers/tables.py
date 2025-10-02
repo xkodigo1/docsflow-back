@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
-from middlewares.auth import get_current_user
-from repositories import table_repo, document_repo
-from utils.authz import ensure_user_can_access_document
+from app.middlewares.auth import get_current_user
+from app.repositories import table_repo, document_repo
+from app.utils.authz import ensure_user_can_access_document
 from fastapi.responses import StreamingResponse
 import io
 import csv

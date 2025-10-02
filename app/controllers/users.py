@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Optional
-from utils.authz import require_admin
-from repositories.user_repo import list_users
-from middlewares.auth import get_current_user
+from app.utils.authz import require_admin
+from app.repositories.user_repo import list_users
+from app.middlewares.auth import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 

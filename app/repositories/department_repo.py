@@ -1,4 +1,4 @@
-from utils.db import get_db_connection
+from app.utils.db import get_db_connection
 
 
 def exists(department_id: int) -> bool:

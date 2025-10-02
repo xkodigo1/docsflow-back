@@ -2,7 +2,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
-from config.settings import settings
+from app.config.settings import settings
 
 
 def _send_via_tls(to_email: str, msg: MIMEMultipart) -> None:

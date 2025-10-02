@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
-from utils.db import get_db_connection
-from utils.query import build_where
+from app.utils.db import get_db_connection
+from app.utils.query import build_where
 
 
 def insert_document(filename: str, uploaded_by: int, department_id: int, filepath: str, document_type: Optional[str] = None) -> int:

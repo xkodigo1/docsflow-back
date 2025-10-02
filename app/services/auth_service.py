@@ -1,7 +1,8 @@
 from fastapi import HTTPException
-from repositories import user_repo
-from utils.security import verify_password, create_access_token
+from app.repositories import user_repo
+from app.utils.security import verify_password, create_access_token
 from datetime import timedelta
+import hashlib
 
 MAX_ATTEMPTS = 5
 

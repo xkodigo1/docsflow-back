@@ -1,4 +1,4 @@
-from utils.db import get_db_connection
+from app.utils.db import get_db_connection
 
 
 def get_user_by_email(email: str):
@@ -6,6 +6,18 @@ def get_user_by_email(email: str):
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        return user
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def get_user_by_id(user_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
         user = cursor.fetchone()
         return user
     finally:
