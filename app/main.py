@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from config.settings import settings
 from utils.db import get_db_connection
-from controllers.auth import router as auth_router
+from controllers.auth_controller import router as auth_router
 from controllers.documents import router as documents_router
 from controllers.tables import router as tables_router
 from controllers.users import router as users_router
