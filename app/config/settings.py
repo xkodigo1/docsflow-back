@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     email_debug: bool = True
 
     # Frontend
-    frontend_base_url: str | None = None
+    frontend_base_url: str | None = "http://localhost:5173" 
 
     # CORS
     cors_allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"]
