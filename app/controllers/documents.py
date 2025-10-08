@@ -107,9 +107,17 @@ def process_document(document_id: int, current_user=Depends(get_current_user)):
     # Ejecutar extracción
     try:
         content = extract_pdf_content(doc["filepath"])
-        table_repo.insert_extracted_table(document_id, 0, json.dumps(content))
+        
+        # Guardar cada tabla individualmente
+        if content.get("tables") and len(content["tables"]) > 0:
+            for table_index, table_data in enumerate(content["tables"]):
+                table_repo.insert_extracted_table(document_id, table_index, json.dumps(table_data))
+        else:
+            # Si no hay tablas, guardar el contenido completo como antes
+            table_repo.insert_extracted_table(document_id, 0, json.dumps(content))
+        
         document_repo.mark_processed(document_id)
-        return {"message": "Documento procesado"}
+        return {"message": f"Documento procesado. {len(content.get('tables', []))} tablas extraídas"}
     except Exception as e:
         conn = get_db_connection()
         cur = conn.cursor()
