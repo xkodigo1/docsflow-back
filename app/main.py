@@ -5,6 +5,7 @@ from controllers.auth import router as auth_router
 from controllers.documents import router as documents_router
 from controllers.tables import router as tables_router
 from controllers.users import router as users_router
+from controllers.departments import router as departments_router
 from fastapi.middleware.cors import CORSMiddleware
 
 application = FastAPI()
@@ -36,3 +37,4 @@ application.include_router(auth_router)
 application.include_router(tables_router)
 application.include_router(users_router)
 application.include_router(documents_router)
+application.include_router(departments_router)
