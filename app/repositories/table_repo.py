@@ -69,3 +69,5 @@ def delete_by_document(document_id: int) -> None:
         cursor.close()
         conn.close()
 
+
+

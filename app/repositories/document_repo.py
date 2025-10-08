@@ -98,3 +98,5 @@ def mark_processed(document_id: int):
         cursor.close()
         conn.close()
 
+
+
