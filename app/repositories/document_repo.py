@@ -32,7 +32,7 @@ def get_document(document_id: int):
         conn.close()
 
 
-def list_documents(limit: int, offset: int, department_id: Optional[int] = None, document_type: Optional[str] = None):
+def list_documents(limit: int, offset: int, department_id: Optional[int] = None, document_type: Optional[str] = None, status: Optional[str] = None):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -44,6 +44,9 @@ def list_documents(limit: int, offset: int, department_id: Optional[int] = None,
         if document_type:
             filters.append("document_type = %s")
             params.append(document_type)
+        if status:
+            filters.append("status = %s")
+            params.append(status)
         query = "SELECT * FROM documents" + build_where(filters) + " ORDER BY uploaded_at DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         cursor.execute(query, tuple(params))

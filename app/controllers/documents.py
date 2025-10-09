@@ -54,11 +54,12 @@ def list_documents(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     department_id: Optional[int] = None,
-    document_type: Optional[str] = None
+    document_type: Optional[str] = None,
+    status: Optional[str] = None
 ):
     if current_user["role"] == "operador":
         department_id = current_user["department_id"]
-    rows = document_repo.list_documents(limit=limit, offset=offset, department_id=department_id, document_type=document_type)
+    rows = document_repo.list_documents(limit=limit, offset=offset, department_id=department_id, document_type=document_type, status=status)
     return {"items": rows, "limit": limit, "offset": offset}
 
 @router.get("/{document_id}")
