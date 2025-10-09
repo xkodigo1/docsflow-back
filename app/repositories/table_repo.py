@@ -38,7 +38,7 @@ def search(q: str, department_id: Optional[int] = None, limit: int = 20, offset:
         params = []
         query = (
             "SELECT et.id AS table_id, et.document_id, et.table_index, et.content, et.created_at, "
-            "d.filename AS document_filename, d.department_id AS document_department_id, d.uploaded_at AS document_uploaded_at, d.status AS document_status "
+            "d.filename AS document_filename, d.department_id AS document_department_id, d.uploaded_at AS document_uploaded_at, d.status AS document_status, d.uploaded_by AS document_uploaded_by "
             "FROM extracted_tables et JOIN documents d ON d.id = et.document_id"
         )
         filters = []
@@ -70,4 +70,54 @@ def delete_by_document(document_id: int) -> None:
         conn.close()
 
 
+def search_by_user(user_id: int, q: str = "", limit: int = 20, offset: int = 0):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        params = [user_id]
+        query = (
+            "SELECT et.id AS table_id, et.document_id, et.table_index, et.content, et.created_at, "
+            "d.filename AS document_filename, d.department_id AS document_department_id, d.uploaded_at AS document_uploaded_at, d.status AS document_status, d.uploaded_by AS document_uploaded_by "
+            "FROM extracted_tables et JOIN documents d ON d.id = et.document_id "
+            "WHERE d.uploaded_by = %s"
+        )
+        
+        if q:
+            query += " AND JSON_SEARCH(JSON_EXTRACT(et.content, '$'), 'one', %s) IS NOT NULL"
+            params.append(f"%{q}%")
+        
+        query += " ORDER BY et.created_at DESC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
+        cursor.execute(query, params)
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def get_all_by_user(user_id: int, q: str = "", limit: int = 100, offset: int = 0):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        params = [user_id]
+        query = (
+            "SELECT et.id AS table_id, et.document_id, et.table_index, et.content, et.created_at, "
+            "d.filename AS document_filename, d.department_id AS document_department_id, d.uploaded_at AS document_uploaded_at, d.status AS document_status, d.uploaded_by AS document_uploaded_by "
+            "FROM extracted_tables et JOIN documents d ON d.id = et.document_id "
+            "WHERE d.uploaded_by = %s"
+        )
+        
+        if q:
+            query += " AND JSON_SEARCH(JSON_EXTRACT(et.content, '$'), 'one', %s) IS NOT NULL"
+            params.append(f"%{q}%")
+        
+        query += " ORDER BY d.filename ASC, et.table_index ASC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
+        cursor.execute(query, params)
+        return cursor.fetchall()
+    finally:
+        cursor.close()
+        conn.close()
 
