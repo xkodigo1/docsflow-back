@@ -109,16 +109,31 @@ def process_document(document_id: int, current_user=Depends(get_current_user)):
     try:
         content = extract_pdf_content(doc["filepath"])
         
-        # Guardar cada tabla individualmente
-        if content.get("tables") and len(content["tables"]) > 0:
-            for table_index, table_data in enumerate(content["tables"]):
+        # Verificar si se encontraron tablas
+        tables = content.get("tables", [])
+        if tables and len(tables) > 0:
+            # Guardar cada tabla individualmente
+            for table_index, table_data in enumerate(tables):
                 table_repo.insert_extracted_table(document_id, table_index, json.dumps(table_data))
+            
+            # Marcar como procesado exitosamente
+            document_repo.mark_processed(document_id)
+            return {"message": f"Documento procesado exitosamente. {len(tables)} tablas extraídas"}
         else:
-            # Si no hay tablas, guardar el contenido completo como antes
-            table_repo.insert_extracted_table(document_id, 0, json.dumps(content))
-        
-        document_repo.mark_processed(document_id)
-        return {"message": f"Documento procesado. {len(content.get('tables', []))} tablas extraídas"}
+            # No se encontraron tablas - marcar como error
+            conn = get_db_connection()
+            cur = conn.cursor()
+            try:
+                cur.execute(
+                    "UPDATE documents SET status='error', error_message=%s WHERE id=%s", 
+                    ("No se encontraron tablas en el documento", document_id)
+                )
+                conn.commit()
+            finally:
+                cur.close()
+                conn.close()
+            
+            return {"message": "Documento procesado pero no se encontraron tablas. Marcado como error."}
     except Exception as e:
         conn = get_db_connection()
         cur = conn.cursor()
