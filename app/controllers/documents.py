@@ -191,3 +191,41 @@ def get_document_status(document_id: int, current_user=Depends(get_current_user)
         "last_attempt_at": doc.get("last_attempt_at"),
         "error_message": doc.get("error_message"),
     }
+
+@router.post("/process-multiple", summary="Procesar múltiples documentos", description="Inicia el procesamiento de múltiples documentos pendientes.")
+def process_multiple_documents(
+    document_ids: list[int],
+    current_user=Depends(get_current_user)
+):
+    if not document_ids:
+        raise HTTPException(status_code=400, detail="No se proporcionaron IDs de documentos")
+    
+    processed_count = 0
+    failed_count = 0
+    
+    for doc_id in document_ids:
+        try:
+            doc = document_repo.get_document(doc_id)
+            if not doc:
+                failed_count += 1
+                continue
+                
+            # Verificar que el usuario puede acceder al documento
+            ensure_user_can_access_document(current_user, doc)
+            
+            # Solo procesar si está pendiente o con error
+            if doc.get("status") in ["pending", "error"]:
+                document_repo.update_document_status(doc_id, "processing")
+                processed_count += 1
+            else:
+                failed_count += 1
+                
+        except Exception as e:
+            print(f"Error processing document {doc_id}: {e}")
+            failed_count += 1
+    
+    return {
+        "message": f"Procesamiento iniciado para {processed_count} documento(s)",
+        "processed": processed_count,
+        "failed": failed_count
+    }
