@@ -50,14 +50,14 @@ def update_department_endpoint(
 
 @router.delete("/{department_id}")
 def delete_department_endpoint(department_id: int, admin=Depends(require_admin)):
-    """Eliminar un departamento"""
+    """Eliminar un departamento y toda la información relacionada (eliminación en cascada)"""
     try:
-        delete_department(department_id)
-        return {"message": "Departamento eliminado exitosamente"}
+        result = delete_department(department_id)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=404, detail="Departamento no encontrado")
+        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
 
 @router.get("/stats/summary")
 def get_department_stats_endpoint(admin=Depends(require_admin)):

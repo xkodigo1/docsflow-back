@@ -85,30 +85,60 @@ def update_department(department_id: int, name: str) -> Dict[str, Any]:
         conn.close()
 
 
-def delete_department(department_id: int) -> None:
-    """Eliminar un departamento"""
+def delete_department(department_id: int) -> Dict[str, Any]:
+    """Eliminar un departamento y toda la información relacionada (eliminación en cascada)"""
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         # Verificar si el departamento existe
-        cursor.execute("SELECT id FROM departments WHERE id = %s", (department_id,))
-        if not cursor.fetchone():
+        cursor.execute("SELECT id, name FROM departments WHERE id = %s", (department_id,))
+        department = cursor.fetchone()
+        if not department:
             raise ValueError("Departamento no encontrado")
         
-        # Verificar si hay usuarios asignados a este departamento
+        # Obtener estadísticas antes de eliminar
         cursor.execute("SELECT COUNT(*) FROM users WHERE department_id = %s", (department_id,))
         user_count = cursor.fetchone()[0]
-        if user_count > 0:
-            raise ValueError(f"No se puede eliminar el departamento porque tiene {user_count} usuario(s) asignado(s)")
         
-        # Verificar si hay documentos de este departamento
         cursor.execute("SELECT COUNT(*) FROM documents WHERE department_id = %s", (department_id,))
         doc_count = cursor.fetchone()[0]
-        if doc_count > 0:
-            raise ValueError(f"No se puede eliminar el departamento porque tiene {doc_count} documento(s) asociado(s)")
         
+        cursor.execute("""
+            SELECT COUNT(*) FROM extracted_tables et 
+            JOIN documents d ON et.document_id = d.id 
+            WHERE d.department_id = %s
+        """, (department_id,))
+        table_count = cursor.fetchone()[0]
+        
+        # Eliminar en cascada (en orden correcto para respetar foreign keys)
+        # 1. Eliminar tablas extraídas de documentos del departamento
+        cursor.execute("""
+            DELETE et FROM extracted_tables et 
+            JOIN documents d ON et.document_id = d.id 
+            WHERE d.department_id = %s
+        """, (department_id,))
+        
+        # 2. Eliminar documentos del departamento
+        cursor.execute("DELETE FROM documents WHERE department_id = %s", (department_id,))
+        
+        # 3. Eliminar usuarios del departamento
+        cursor.execute("DELETE FROM users WHERE department_id = %s", (department_id,))
+        
+        # 4. Finalmente, eliminar el departamento
         cursor.execute("DELETE FROM departments WHERE id = %s", (department_id,))
+        
         conn.commit()
+        
+        return {
+            "message": "Departamento eliminado exitosamente",
+            "department_name": department[1],
+            "deleted_users": user_count,
+            "deleted_documents": doc_count,
+            "deleted_tables": table_count
+        }
+    except Exception as e:
+        conn.rollback()
+        raise e
     finally:
         cursor.close()
         conn.close()
